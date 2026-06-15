@@ -1,124 +1,54 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 export interface IUser extends Document {
-  phone: string;
-  email?: string;
-  password?: string;
   fullName: string;
-  nickname: string;
-  balance: number;
-  role: 'user' | 'admin';
-  googleId?: string;
+  phone?: string;
+  email?: string;
+  password: string;
+  provider: string;
+  providerId: string;
   avatar?: string;
+  role: 'user' | 'admin';
   isActive: boolean;
-  depositLimits: {
-    daily: number;
-    weekly: number;
-  };
-  stats: {
-    totalBets: number;
-    wonBets: number;
-    lostBets: number;
-    totalWagered: number;
-    totalWon: number;
-    totalLost: number;
-  };
-  comparePassword(candidatePassword: string): Promise<boolean>;
-  createdAt: Date;
-  updatedAt: Date;
+  walletBalance: number;
+  refreshToken?: string;
+  comparePassword(c: string): Promise<boolean>;
+  generateAuthToken(): string;
+  generateRefreshToken(): string;
 }
 
-const UserSchema = new Schema<IUser>(
-  {
-    phone: {
-      type: String,
-      required: [true, 'Phone number is required'],
-      unique: true,
-      trim: true,
-    },
-    email: {
-      type: String,
-      sparse: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    password: {
-      type: String,
-      minlength: [6, 'Password must be at least 6 characters'],
-      select: false,
-    },
-    fullName: {
-      type: String,
-      required: [true, 'Full name is required'],
-      trim: true,
-    },
-    nickname: {
-      type: String,
-      required: [true, 'Nickname is required'],
-      unique: true,
-      trim: true,
-      minlength: [3, 'Nickname must be at least 3 characters'],
-      maxlength: [20, 'Nickname cannot exceed 20 characters'],
-    },
-    balance: {
-      type: Number,
-      default: 0,
-      min: [0, 'Balance cannot be negative'],
-    },
-    role: {
-      type: String,
-      enum: ['user', 'admin'],
-      default: 'user',
-    },
-    googleId: {
-      type: String,
-      sparse: true,
-      unique: true,
-    },
-    avatar: {
-      type: String,
-      default: null,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    depositLimits: {
-      daily: { type: Number, default: 5000, min: 0 },
-      weekly: { type: Number, default: 20000, min: 0 },
-    },
-    stats: {
-      totalBets: { type: Number, default: 0 },
-      wonBets: { type: Number, default: 0 },
-      lostBets: { type: Number, default: 0 },
-      totalWagered: { type: Number, default: 0 },
-      totalWon: { type: Number, default: 0 },
-      totalLost: { type: Number, default: 0 },
-    },
-  },
-  { timestamps: true }
-);
+const userSchema = new Schema<IUser>({
+  fullName: { type: String, required: true },
+  phone: { type: String, unique: true, sparse: true },
+  email: { type: String, unique: true, sparse: true, lowercase: true },
+  password: { type: String, required: true, select: false },
+  provider: { type: String, required: true },
+  providerId: { type: String, required: true },
+  avatar: String,
+  role: { type: String, default: 'user' },
+  isActive: { type: Boolean, default: true },
+  walletBalance: { type: Number, default: 0.00 },
+  refreshToken: { type: String, select: false },
+}, { timestamps: true });
 
-// Hash password before saving
-UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password') || !this.password) return next();
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error: any) {
-    next(error);
-  }
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
 });
 
-// Compare password method
-UserSchema.methods.comparePassword = async function (
-  candidatePassword: string
-): Promise<boolean> {
-  if (!this.password) return false;
-  return bcrypt.compare(candidatePassword, this.password);
+userSchema.methods.comparePassword = async function(c: string) {
+  return bcrypt.compare(c, this.password);
 };
 
-export default mongoose.model<IUser>('User', UserSchema);
+userSchema.methods.generateAuthToken = function() {
+  return jwt.sign({ userId: this._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+};
+
+userSchema.methods.generateRefreshToken = function() {
+  return jwt.sign({ userId: this._id }, process.env.JWT_REFRESH_SECRET || 'refresh', { expiresIn: '30d' });
+};
+
+export default mongoose.model<IUser>('User', userSchema);

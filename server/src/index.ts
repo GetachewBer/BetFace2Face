@@ -1,45 +1,26 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import passport from 'passport';
-import connectDB from './config/database';
-import authRoutes from './routes/authRoutes';
-
-// Load environment variables
 dotenv.config();
 
+import mongoose from 'mongoose';
+import authRoutes from './routes/auth.routes';
+import fixtureRoutes from './routes/fixture.routes';
+import betRoutes from './routes/bet.routes';
+import { authenticate } from './middleware/auth.middleware';
+
 const app = express();
-
-// Middleware
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true,
-}));
+app.use(cors({ origin: true }));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(passport.initialize());
 
-// Connect to MongoDB
-connectDB();
-
-// Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/fixtures', fixtureRoutes);
+app.use('/api/bets', authenticate, betRoutes);
 
-// Test route
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'BetFace2Face API is running',
-    timestamp: new Date().toISOString(),
-  });
-});
+const start = async () => {
+  await mongoose.connect('mongodb://localhost:27017/betface2face');
+  console.log('MongoDB Connected');
+  app.listen(5000, () => console.log('Server on :5000'));
+};
 
-// Start server
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
-});
-
-export default app;
+start();

@@ -3,10 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/layout/Navbar';
 import Home from './pages/Home';
 import RegisterPage from './pages/auth/RegisterPage';
-import LoginPage from './pages/auth/LoginPage';
-import Dashboard from './pages/Dashboard';
-import OAuthCallback from './pages/auth/OAuthCallback';
-import AdminDashboard from './pages/admin/AdminDashboard';
 
 const App: React.FC = () => {
   return (
@@ -16,10 +12,6 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/oauth/callback" element={<OAuthCallback />} />
         </Routes>
       </div>
     </Router>
